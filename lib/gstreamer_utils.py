@@ -1,6 +1,7 @@
 """Lightweight GStreamer capture helpers for Jetson pipelines."""
 
 from __future__ import annotations
+from gi.repository import Gst, GstApp  # type: ignore
 
 from typing import Optional, Tuple
 
@@ -17,7 +18,6 @@ except ImportError as exc:  # pragma: no cover - environment check
 # Ensure required GStreamer components are present before importing
 gi.require_version("Gst", "1.0")
 gi.require_version("GstApp", "1.0")
-from gi.repository import Gst, GstApp  # type: ignore
 
 _GST_INITIALIZED = False
 
