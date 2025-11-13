@@ -1,0 +1,63 @@
+{
+  "video": {
+    "source": "JETSON_PICAM",
+    "width": 640,
+    "height": 360,
+    "fps": 30,
+    "calib_width": 1280,
+    "calib_height": 720,
+    "focal_length_x": 870.0,
+    "focal_length_y": 870.0,
+    "c_x": 640.0,
+    "c_y": 360.0
+  },
+  "model": {
+    "input_width": 640,
+    "input_height": 192
+  },
+  "point_cloud": {
+    "enabled": true,
+    "window_width": 1024,
+    "window_height": 768,
+    "point_size": 1.2,
+    "background_color": [0.08, 0.08, 0.08],
+    "min_depth": 0.2,
+    "max_depth": 12.0,
+    "subsample_factor": 2
+  },
+  "point_cloud_preprocessing": {
+    "voxel_size": 0.03,
+    "ground": {
+      "enabled": true,
+      "distance_threshold": 0.04,
+      "ransac_n": 3,
+      "num_iterations": 150
+    },
+    "clustering": {
+      "enabled": true,
+      "eps": 0.18,
+      "min_points": 35
+    }
+  },
+  "obstacle_avoidance": {
+    "enabled": true,
+    "d_safe": 1.8,
+    "d_pre_end": 3.5,
+    "d_pre_begin": 5.5,
+    "lateral_clearance": 0.8,
+    "vertical_clearance": 0.6,
+    "max_lateral": 2.5,
+    "max_vertical": 2.0,
+    "sector_margin": 0.25,
+    "post_clearance_margin": 0.45,
+    "vote_weights": {
+      "pre": 1.0,
+      "mid": 2.0,
+      "post": 2.0
+    }
+  },
+  "visualization": {
+    "show_coordinate_frame": true,
+    "show_2d_display": true
+  }
+}
