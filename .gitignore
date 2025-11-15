@@ -1,0 +1,4 @@
+weights/**/*.pth
+weights/**/*.pt
+weights/**/*.ckpt
+!weights/RTMonoDepth/README.md

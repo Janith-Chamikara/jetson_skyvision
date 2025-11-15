@@ -1,10 +1,28 @@
-import cv2
 import numpy as np
 import open3d as o3d
 import torch
+import torch.nn.functional as F
 
 from layers import disp_to_depth
 from networks.RTMonoDepth.RTMonoDepth import DepthDecoder, DepthEncoder
+
+try:  # Optional dependency improves disparity visualisation
+    from matplotlib import cm
+except ImportError:  # pragma: no cover - best effort fallback when matplotlib missing
+    cm = None
+
+_MAGMA_CMAP = cm.get_cmap("magma") if cm is not None else None
+
+
+def _apply_magma_colormap(normalized: np.ndarray) -> np.ndarray:
+    """Map normalised disparity values to an RGB image."""
+
+    if _MAGMA_CMAP is not None:
+        rgba = _MAGMA_CMAP(normalized)
+        return (rgba[..., :3] * 255.0).astype(np.uint8)
+
+    grayscale = (normalized * 255.0).astype(np.uint8)
+    return np.stack((grayscale, grayscale, grayscale), axis=-1)
 
 
 def compute_scaled_intrinsics(video_config, original_shape, depth_shape):
@@ -128,9 +146,7 @@ def colorize_disparity(disp_map):
     normalized[valid_mask] = (disp[valid_mask] - vmin) / (vmax - vmin)
     normalized = np.clip(normalized, 0.0, 1.0)
 
-    disp_uint8 = (normalized * 255.0).astype(np.uint8)
-    colormap = cv2.applyColorMap(disp_uint8, cv2.COLORMAP_MAGMA)
-    return colormap
+    return _apply_magma_colormap(normalized)
 
 
 class DepthProcessor:
@@ -170,15 +186,20 @@ class DepthProcessor:
         """Run the network and return metric depth and disparity for a single frame."""
 
         with torch.no_grad():
-            input_image = cv2.resize(
-                frame, (self.input_width, self.input_height))
-            input_tensor = (
-                torch.from_numpy(input_image)
-                .float()
+            frame_tensor = (
+                torch.from_numpy(frame)
                 .permute(2, 0, 1)
                 .unsqueeze(0)
-                .to(self.device)
-            ) / 255.0
+                .float()
+            )
+            frame_tensor = frame_tensor.to(self.device)
+            resized_tensor = F.interpolate(
+                frame_tensor,
+                size=(self.input_height, self.input_width),
+                mode="bilinear",
+                align_corners=False,
+            )
+            input_tensor = resized_tensor / 255.0
 
             features = self.encoder(input_tensor)
             outputs = self.depth_decoder(features)
@@ -187,6 +208,16 @@ class DepthProcessor:
             _, depth = disp_to_depth(disp, self.min_depth, self.max_depth)
             depth_map = depth.squeeze().cpu().numpy().astype(np.float32)
             disp_map = disp.squeeze().cpu().numpy().astype(np.float32)
+
+            input_image = (
+                resized_tensor
+                .detach()
+                .cpu()
+                .squeeze(0)
+                .permute(1, 2, 0)
+                .numpy()
+                .astype(np.uint8)
+            )
 
             return depth_map, input_image, disp_map
 
@@ -263,7 +294,7 @@ class PointCloudVisualizer:
 
         self._ensure_geometry_cache(rgb_image.shape[:2], depth_map.shape)
 
-        rgb_for_colors = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2RGB)
+        rgb_for_colors = np.ascontiguousarray(rgb_image[..., ::-1])
         points, colors = depth_to_points(
             depth_map,
             rgb_for_colors,
